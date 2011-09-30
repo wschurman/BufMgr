@@ -12,8 +12,10 @@
 //--------------------------------------------------------------------
 Frame::Frame()
 {
-	// TODO: add your code here
-	
+	this->pid = INVALID_PAGE;
+	this->pinCount = 0;
+	this->data = NULL;
+	this->dirty = false;
 }
 
 //--------------------------------------------------------------------
@@ -25,7 +27,7 @@ Frame::Frame()
 //--------------------------------------------------------------------
 void Frame::Pin()
 {
-	// TODO: add your code here
+	this->pinCount++;
 }
 
 //--------------------------------------------------------------------
@@ -37,13 +39,13 @@ void Frame::Pin()
 //--------------------------------------------------------------------
 void Frame::Unpin()
 {
-	// TODO: add your code here
+	this->pinCount--;
 }
 
 //Mark the frame dirty 
 void Frame::DirtyIt()
 {
-	dirty= true;
+	this->dirty = true;
 }
 //--------------------------------------------------------------------
 // Frame::IsDirty
@@ -55,8 +57,7 @@ void Frame::DirtyIt()
 
 bool Frame::IsDirty()
 {
-	// TODO: add your code here
-	return true;
+	return this->dirty;
 }
 
 //--------------------------------------------------------------------
@@ -68,8 +69,7 @@ bool Frame::IsDirty()
 //--------------------------------------------------------------------
 bool Frame::IsValid()
 {
-	// TODO: add your code here
-	return true;
+	return (this->GetPage() != NULL);
 }
 
 //--------------------------------------------------------------------
@@ -81,8 +81,13 @@ bool Frame::IsValid()
 //--------------------------------------------------------------------
 Status Frame::Write()
 {
-	// TODO: add your code here
-	return FAIL;
+	Status success = DB::WritePage(this->GetPageID(), this->GetPage());
+	//probably wrong status
+	if (success == OK) {
+		return OK;
+	} else {
+		return FAIL;
+	}
 }
 
 //--------------------------------------------------------------------
@@ -96,8 +101,9 @@ Status Frame::Write()
 //--------------------------------------------------------------------
 Status Frame::Read(PageID pid, bool isEmpty)
 {	
-	// TODO: add your code here
-	return FAIL;
+	this->data = new Page();
+	Status s = DB::ReadPage(pid, this->data);
+	return s;
 }
 
 //--------------------------------------------------------------------
@@ -113,9 +119,11 @@ Status Frame::Read(PageID pid, bool isEmpty)
 
 Status Frame::Free()
 {
-
-	// TODO: add your code here
-	return FAIL;
+	this->pid = INVALID_PAGE;
+	this->pinCount = 0;
+	this->dirty = false;
+	delete this->data;
+	return OK;
 }
 
 //--------------------------------------------------------------------
@@ -127,8 +135,7 @@ Status Frame::Free()
 //--------------------------------------------------------------------
 bool Frame::NotPinned()
 {
-	// TODO: add your code here
-	return false;
+	return this->pinCount == 0;
 }
 
 //--------------------------------------------------------------------
@@ -140,8 +147,7 @@ bool Frame::NotPinned()
 //--------------------------------------------------------------------
 PageID Frame::GetPageID()
 {
-	// TODO: add your code here
-	return 0;
+	return this->pid;
 }
 
 //--------------------------------------------------------------------
@@ -154,8 +160,7 @@ PageID Frame::GetPageID()
 
 Page* Frame::GetPage()
 {
-	// TODO: add your code here
-	return NULL;
+	return this->data;
 
 }
 
@@ -169,8 +174,7 @@ Page* Frame::GetPage()
 
 int Frame::GetPinCount()
 {
-	// TODO: add your code here
-	return 0;
+	return this->pinCount();
 }
 
 //--------------------------------------------------------------------
@@ -182,6 +186,7 @@ int Frame::GetPinCount()
 
 Frame::~Frame()
 {
+	// hm,mmmmmmmm
 	// TODO: add your code here
 }
 

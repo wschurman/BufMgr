@@ -15,7 +15,12 @@
 
 BufMgr::BufMgr( int numOfFrames, const char* replacementPolicy)
 {
-	//TODO: add your code here
+	this->numOfFrames = numOfFrames;
+	this->replacer = (Replacer*)replacementPolicy;
+	this->frames = new Frame[numOfFrames];
+	for (int i=0; i < numOfFrames; i++) {
+		this->frames[i].Free();
+	}
 }
 
 
@@ -28,7 +33,8 @@ BufMgr::BufMgr( int numOfFrames, const char* replacementPolicy)
 
 BufMgr::~BufMgr()
 {   
-	//TODO: add your code here
+	delete [] this->frames;
+	this->frames = NULL;
 }
 
 //--------------------------------------------------------------------
@@ -54,7 +60,23 @@ BufMgr::~BufMgr()
 
 Status BufMgr::PinPage(PageID pid, Page*& page, bool isEmpty)
 {
-	//TODO: add your code here
+	int frame_num = this->FindFrame(pid);
+	if (frame_num == INVALID_PAGE) {
+		if (this->GetNumOfUnpinnedFrames() == 0) {
+			page = NULL;
+			return FAIL;
+		}
+		// find next empty page
+		// make it this
+		frame_num = find_free_frame();
+		this->frames[frame_num].Read(pid, isEmpty);
+	} else {
+		
+	}
+
+	page = this->frames[frame_num].GetPage();
+	this->frames[frame_num].Pin();
+
 	return OK;
 } 
 
@@ -76,7 +98,11 @@ Status BufMgr::PinPage(PageID pid, Page*& page, bool isEmpty)
 
 Status BufMgr::UnpinPage(PageID pid, bool dirty)
 {
-	//TODO: add your code here
+	int frame_num = this->FindFrame(pid);
+	if (frame_num == INVALID_PAGE) return FAIL;
+	if (this->frames[frame_num].NotPinned()) return FAIL;
+	this->frames[frame_num].Unpin();
+	if (dirty) this->frames[frame_num].DirtyIt();
 	return OK;
 }
 
@@ -103,7 +129,12 @@ Status BufMgr::UnpinPage(PageID pid, bool dirty)
 
 Status BufMgr::NewPage (PageID& firstPid, Page*& firstPage, int howMany)
 {
-	//TODO: add your code here
+	if (howMany < 1) return FAIL;
+	if (this->GetNumOfUnpinnedFrames() < 1) return FAIL;
+	//DB::AllocatePage(firstPid, howMany);
+	int frame_num = find_free_frame();
+	this->frames[frame_num].Read(firstPid, isEmpty);
+	firstPage = this->frames[frame_num].GetPage();
 	return OK;
 }
 
@@ -127,7 +158,12 @@ Status BufMgr::NewPage (PageID& firstPid, Page*& firstPage, int howMany)
 
 Status BufMgr::FreePage(PageID pid)
 {
-	//TODO: add your code here
+	int frame_num = this->FindFrame(pid);
+	if (frame_num == INVALID_PAGE) return FAIL;
+	if(this->frames[frame_num].GetPinCount() > 1) return FAIL;
+	this->frames[frame_num].Unpin();
+	this->frames[frame_num].Free();
+	MINIBASE_DB->DeallocatePage(pid);
 	return OK;
 }
 
@@ -148,7 +184,10 @@ Status BufMgr::FreePage(PageID pid)
 
 Status BufMgr::FlushPage(PageID pid)
 {
-	//TODO: add your code here
+	int frame_num = this->FindFrame(pid);
+	if (frame_num == INVALID_PAGE) return FAIL;
+	// write to disk if dirty
+	this->frames[frame_num].Free();
 	return OK;
 } 
 
@@ -185,8 +224,11 @@ Status BufMgr::FlushAllPages()
 
 unsigned int BufMgr::GetNumOfUnpinnedFrames()
 {
-	//TODO: add your code here
-	return 0;
+	int n = 0;
+	for(int i = 0; i < this->numOfFrames; i++) {
+		if (this->frames[i].NotPinned()) n++;
+	}
+	return n;
 }
 
 void BufMgr::ResetStat() { 
@@ -216,6 +258,9 @@ void  BufMgr::PrintStat() {
 
 int BufMgr::FindFrame( PageID pid )
 {
-	//TODO: add your code here
-	return 0;
+	int n = 0;
+	for(int i = 0; i < this->numOfFrames; i++) {
+		if (this->frames[i].GetPageID() == pid) return i;
+	}
+	return INVALID_FRAME;
 }
