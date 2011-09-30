@@ -14,7 +14,7 @@ private:
 		lFrame* next;
 	};  
 
-	lFrame* first;  
+	lFrame* first; 
 	lFrame* last;
 
 	bool IsPresent(int f);

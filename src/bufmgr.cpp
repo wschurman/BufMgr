@@ -1,6 +1,9 @@
 
 #include "bufmgr.h"
 #include "frame.h"
+#include "replacer.h"
+#include "lru.h"
+#include "mru.h"
 
 //--------------------------------------------------------------------
 // Constructor for BufMgr
@@ -16,7 +19,12 @@
 BufMgr::BufMgr( int numOfFrames, const char* replacementPolicy)
 {
 	this->numOfFrames = numOfFrames;
-	this->replacer = (Replacer*)replacementPolicy;
+	if (replacementPolicy == "lru") {
+		this->replacer = new LRU();
+	} else {
+		this->replacer = new MRU();
+	}
+	
 	this->frames = new Frame[numOfFrames];
 	for (int i=0; i < numOfFrames; i++) {
 		this->frames[i].Free();
@@ -33,8 +41,10 @@ BufMgr::BufMgr( int numOfFrames, const char* replacementPolicy)
 
 BufMgr::~BufMgr()
 {   
+	this->FlushAllPages();
 	delete [] this->frames;
 	this->frames = NULL;
+	delete this->replacer;
 }
 
 //--------------------------------------------------------------------
@@ -66,9 +76,8 @@ Status BufMgr::PinPage(PageID pid, Page*& page, bool isEmpty)
 			page = NULL;
 			return FAIL;
 		}
-		// find next empty page
-		// make it this
-		frame_num = find_free_frame();
+
+		frame_num = this->FindFreeFrameOrReplace();
 		this->frames[frame_num].Read(pid, isEmpty);
 	} else {
 		
@@ -76,6 +85,10 @@ Status BufMgr::PinPage(PageID pid, Page*& page, bool isEmpty)
 
 	page = this->frames[frame_num].GetPage();
 	this->frames[frame_num].Pin();
+
+	// put it in replacer
+	this->replacer->RemoveFrame(frame_num);
+	this->replacer->AddFrame(frame_num);
 
 	return OK;
 } 
@@ -132,9 +145,14 @@ Status BufMgr::NewPage (PageID& firstPid, Page*& firstPage, int howMany)
 	if (howMany < 1) return FAIL;
 	if (this->GetNumOfUnpinnedFrames() < 1) return FAIL;
 	//DB::AllocatePage(firstPid, howMany);
-	int frame_num = find_free_frame();
-	this->frames[frame_num].Read(firstPid, isEmpty);
+	int frame_num = this->FindFreeFrameOrReplace();
+	this->frames[frame_num].Read(firstPid, howMany > 0);
 	firstPage = this->frames[frame_num].GetPage();
+
+	// hmmmmm maybe don't need
+	this->replacer->RemoveFrame(frame_num);
+	this->replacer->AddFrame(frame_num);
+
 	return OK;
 }
 
@@ -164,6 +182,8 @@ Status BufMgr::FreePage(PageID pid)
 	this->frames[frame_num].Unpin();
 	this->frames[frame_num].Free();
 	MINIBASE_DB->DeallocatePage(pid);
+
+	this->replacer->RemoveFrame(frame_num);
 	return OK;
 }
 
@@ -186,8 +206,13 @@ Status BufMgr::FlushPage(PageID pid)
 {
 	int frame_num = this->FindFrame(pid);
 	if (frame_num == INVALID_PAGE) return FAIL;
+	if (!this->frames[frame_num].NotPinned()) return FAIL;
 	// write to disk if dirty
+	if (this->frames[frame_num].IsDirty()) {
+		//DB::WritePage(this->frames[frame_num].GetPageID(), this->frames[frame_num].GetPage());
+	}
 	this->frames[frame_num].Free();
+	this->replacer->RemoveFrame(frame_num);
 	return OK;
 } 
 
@@ -205,7 +230,10 @@ Status BufMgr::FlushPage(PageID pid)
 
 Status BufMgr::FlushAllPages()
 {
-	//TODO: add your code here
+	// need to make more efficient, do cleanup within this for loop instead of function call
+	for (int i = 0; i < this->numOfFrames; i++) {
+		this->FlushPage(this->frames[i].GetPageID());
+	}
 	return OK;
 }
 
@@ -258,9 +286,43 @@ void  BufMgr::PrintStat() {
 
 int BufMgr::FindFrame( PageID pid )
 {
-	int n = 0;
+	int n = -1;
 	for(int i = 0; i < this->numOfFrames; i++) {
-		if (this->frames[i].GetPageID() == pid) return i;
+		if (this->frames[i].GetPageID() == pid) n = i;
+	}
+	if (n != -1) {
+		this->replacer->RemoveFrame(n);
+		this->replacer->AddFrame(n);
+		return n;
 	}
 	return INVALID_FRAME;
+}
+
+//--------------------------------------------------------------------
+// BufMgr::FindFreeFrameOrReplace
+//
+// Input    : None
+// Output   : frame number of the free frame
+// Purpose  : Find a free frame in the buffer. If none exists, choose
+//			  a victim frame according to the buffer replacement
+//			  policy, and write the current page in that frame back to 
+//			  disk if the frame holds a page and that page is dirty.
+// Condition: None
+// PostCond : a free frame at the returned frame number exists 
+// Return   : OK if operation is successful.  FAIL otherwise.
+//--------------------------------------------------------------------
+
+int BufMgr::FindFreeFrameOrReplace() {
+	// find a free frame
+	for(int i = 0; i < this->numOfFrames; i++) {
+		if (this->frames[i].NotPinned()) {
+			return i;
+		}
+	}
+	
+	// no free frames
+	int n = this->replacer->PickVictim();
+	this->FlushPage(this->frames[n].GetPageID());
+	this->frames[n].Free();
+	return n;
 }

@@ -24,6 +24,7 @@ class BufMgr
 		long totalHit; //total number of pin requests that result in misses
 		long numDirtyPageWrites; //total number of dirty pages written back to disk
 
+		int FindFreeFrameOrReplace(); // find a free frame or free up a frame accoding to replacer
 	public:
 
 		BufMgr( int numOfFrames, const char* replacementPolicy);
