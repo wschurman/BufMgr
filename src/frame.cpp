@@ -102,6 +102,7 @@ Status Frame::Write()
 Status Frame::Read(PageID pid, bool isEmpty)
 {	
 	this->data = new Page();
+	this->pid = pid;
 	Status s = OK;
 	if (!isEmpty) {
 		 s = MINIBASE_DB->ReadPage(pid, this->data);
@@ -125,7 +126,7 @@ Status Frame::Free()
 	this->pid = INVALID_PAGE;
 	this->pinCount = 0;
 	this->dirty = false;
-	delete this->data;
+	//delete this->data;
 	return OK;
 }
 
@@ -164,7 +165,6 @@ PageID Frame::GetPageID()
 Page* Frame::GetPage()
 {
 	return this->data;
-
 }
 
 //--------------------------------------------------------------------

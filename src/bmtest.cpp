@@ -106,7 +106,7 @@ int BMTester::Test1()
             if ( data != pid + 99999 )
             {
                 status = FAIL;
-                cerr << "*** Read wrong data back from page " << pid << endl;
+                cerr << "*** Read wrong data back from page " << pid << "DATA RETURNED: " << data << endl;
             }
 
             status = MINIBASE_BM->UnpinPage( pid , true );
