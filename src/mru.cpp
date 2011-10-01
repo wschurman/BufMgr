@@ -13,6 +13,7 @@ int MRU::PickVictim() {
 }
 
 void MRU::AddFrame(int f) {
+	cout << "AHDHDHDHDHDHDHDJFHdakljefhalksfhakf" << endl;
 	this->f_no = f;
 }
 

@@ -14,6 +14,7 @@ class BufMgr
 {
 	private:
 		int numOfFrames;
+		int numUnpinnedFrames;
 
 		Frame* frames;
 		Replacer* replacer; // a pointer to the abstract base class of replacement policy,

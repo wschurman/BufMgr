@@ -31,8 +31,10 @@ int LRU::PickVictim() {
 }
 
 void LRU::AddFrame(int f) {
+	if (f < 2) return;
 	lFrame* fr = new lFrame;
 	fr->f_no = f;
+	fr->next = NULL;
 
 	if (this->last) {
 		this->last->next = fr;
