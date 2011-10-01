@@ -17,5 +17,7 @@ void MRU::AddFrame(int f) {
 }
 
 void MRU::RemoveFrame(int f) {
-
+	if (f == this->f_no) {
+		this->f_no = 0;
+	}
 }

@@ -18,8 +18,9 @@
 
 BufMgr::BufMgr( int numOfFrames, const char* replacementPolicy)
 {
+	this->ResetStat();
 	this->numOfFrames = numOfFrames;
-	if (replacementPolicy == "lru") {
+	if (replacementPolicy == "LRU") {
 		this->replacer = new LRU();
 	} else {
 		this->replacer = new MRU();
@@ -41,7 +42,7 @@ BufMgr::BufMgr( int numOfFrames, const char* replacementPolicy)
 
 BufMgr::~BufMgr()
 {   
-	this->FlushAllPages();
+	this->FlushAllPages(); // maybe
 	delete [] this->frames;
 	this->frames = NULL;
 	delete this->replacer;
@@ -80,12 +81,12 @@ Status BufMgr::PinPage(PageID pid, Page*& page, bool isEmpty)
 		frame_num = this->FindFreeFrameOrReplace();
 		this->frames[frame_num].Read(pid, isEmpty);
 	} else {
-		
+		this->totalHit++;
 	}
 
 	page = this->frames[frame_num].GetPage();
 	this->frames[frame_num].Pin();
-
+	this->totalCall++;
 	// put it in replacer
 	this->replacer->RemoveFrame(frame_num);
 	this->replacer->AddFrame(frame_num);
@@ -144,9 +145,10 @@ Status BufMgr::NewPage (PageID& firstPid, Page*& firstPage, int howMany)
 {
 	if (howMany < 1) return FAIL;
 	if (this->GetNumOfUnpinnedFrames() < 1) return FAIL;
-	//DB::AllocatePage(firstPid, howMany);
+	MINIBASE_DB->AllocatePage(firstPid, howMany); 
+	
 	int frame_num = this->FindFreeFrameOrReplace();
-	this->frames[frame_num].Read(firstPid, howMany > 0);
+	this->frames[frame_num].Read(firstPid, true); //maybe false
 	firstPage = this->frames[frame_num].GetPage();
 
 	// hmmmmm maybe don't need
@@ -207,9 +209,11 @@ Status BufMgr::FlushPage(PageID pid)
 	int frame_num = this->FindFrame(pid);
 	if (frame_num == INVALID_PAGE) return FAIL;
 	if (!this->frames[frame_num].NotPinned()) return FAIL;
+
 	// write to disk if dirty
 	if (this->frames[frame_num].IsDirty()) {
-		//DB::WritePage(this->frames[frame_num].GetPageID(), this->frames[frame_num].GetPage());
+		MINIBASE_DB->WritePage(this->frames[frame_num].GetPageID(), this->frames[frame_num].GetPage());
+		this->numDirtyPageWrites++;
 	}
 	this->frames[frame_num].Free();
 	this->replacer->RemoveFrame(frame_num);
@@ -230,9 +234,14 @@ Status BufMgr::FlushPage(PageID pid)
 
 Status BufMgr::FlushAllPages()
 {
-	// need to make more efficient, do cleanup within this for loop instead of function call
 	for (int i = 0; i < this->numOfFrames; i++) {
-		this->FlushPage(this->frames[i].GetPageID());
+		if (!this->frames[i].NotPinned()) return FAIL;
+		if (this->frames[i].IsDirty()) {
+			MINIBASE_DB->WritePage(this->frames[i].GetPageID(), this->frames[i].GetPage());
+			this->numDirtyPageWrites++;
+		}
+		this->frames[i].Free();
+		this->replacer->RemoveFrame(i);
 	}
 	return OK;
 }
