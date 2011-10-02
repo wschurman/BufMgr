@@ -45,7 +45,8 @@ BufMgr::BufMgr( int numOfFrames, const char* replacementPolicy)
 
 BufMgr::~BufMgr()
 {   
-	//this->FlushAllPages(); // maybe
+	//this->FlushAllPages(); // maybes
+	MINIBASE_DB->~DB(); // also, maybe
 	delete [] this->frames;
 	this->frames = NULL;
 	delete this->replacer;
@@ -76,15 +77,12 @@ Status BufMgr::PinPage(PageID pid, Page*& page, bool isEmpty)
 {
 	int frame_num = this->FindFrame(pid);
 	if (frame_num == INVALID_PAGE) {
-		//cout << "PinPage didn't find frame with pid " << pid << endl;
 		if (this->GetNumOfUnpinnedFrames() == 0) {
-			//cout << "AHAHAHAHAHAHAHHAHAHAHHAHAH FAAIAIIILLLLL" << endl;
 			page = NULL;
 			return FAIL;
 		}
 
 		frame_num = this->FindFreeFrameOrReplace();
-		//cout << "\nPinPage putting in frame:num: " << frame_num << endl;
 		this->frames[frame_num].Read(pid, isEmpty);
 	} else {
 		this->totalHit++;
@@ -93,7 +91,6 @@ Status BufMgr::PinPage(PageID pid, Page*& page, bool isEmpty)
 	page = this->frames[frame_num].GetPage();
 	this->frames[frame_num].Pin();
 	if (this->frames[frame_num].GetPinCount() == 1) {
-		//cout << "PIN PAGE decrement numupf" << endl;
 		this->replacer->RemoveFrame(frame_num);
 		this->numUnpinnedFrames--;
 	}
@@ -124,11 +121,9 @@ Status BufMgr::UnpinPage(PageID pid, bool dirty)
 	if (frame_num == INVALID_PAGE) return FAIL;
 	if (this->frames[frame_num].NotPinned()) return FAIL;
 	this->frames[frame_num].Unpin();
-	//cout << "UNPIN PAGE " << pid << " IN FRAME " << frame_num << " PIN COUNT: " << this->frames[frame_num].GetPinCount() << endl;
 	if (dirty) this->frames[frame_num].DirtyIt();
 	if (this->frames[frame_num].GetPinCount() == 0) {
 		this->numUnpinnedFrames++;
-		//cout << "UNPIN PAGE NUMUNPF: " << this->numUnpinnedFrames << endl;
 		this->replacer->RemoveFrame(frame_num);
 		this->replacer->AddFrame(frame_num);
 	}
@@ -158,28 +153,19 @@ Status BufMgr::UnpinPage(PageID pid, bool dirty)
 
 Status BufMgr::NewPage (PageID& firstPid, Page*& firstPage, int howMany)
 {
-	//cout << "Call to NewPage" << endl;
 	if (howMany < 1) return FAIL;
 	if (this->GetNumOfUnpinnedFrames() < 1) return FAIL;
 	MINIBASE_DB->AllocatePage(firstPid, howMany);
 	
 	int frame_num = this->FindFreeFrameOrReplace();
 	if (frame_num == -1) {
-		cout << "AHAHAHAHAHAHA" << endl;
 		return FAIL;
 	}
-	//cout << "NewPage, frame_num: " << frame_num << endl;
 	this->frames[frame_num].Read(firstPid, true); //maybe false
 	firstPage = this->frames[frame_num].GetPage();
 
 	this->frames[frame_num].Pin();
 	this->numUnpinnedFrames--;
-
-	//cout << "PID: " << firstPid << " put in FrAME: " <<frame_num << endl;
-
-	// hmmmmm maybe don't need
-	//this->replacer->RemoveFrame(frame_num);
-	//this->replacer->AddFrame(frame_num);
 
 	return OK;
 }
@@ -328,7 +314,6 @@ int BufMgr::FindFrame( PageID pid )
 		this->replacer->AddFrame(n);
 		return n;
 	}
-	//cout << "FIND FRAME DID NOT FIND FRAME: " << pid << "AHAHA" << n << endl;
 	return INVALID_FRAME;
 }
 
@@ -347,20 +332,16 @@ int BufMgr::FindFrame( PageID pid )
 //--------------------------------------------------------------------
 
 int BufMgr::FindFreeFrameOrReplace() {
-	//cout << "CAll to FFFOR" << endl;
-	//cout << "NUPF:" << this->numUnpinnedFrames << endl;
 	if (this->numUnpinnedFrames == 0) return -1;
 	// find a free frame
 	for(int i = 0; i < this->numOfFrames; i++) {
 		if (!this->frames[i].IsValid()) {
-			//cout << "RETURNING " << i << endl;
 			return i;
 		}
 	}
 	
 	// no free frames
 	int n = this->replacer->PickVictim();
-	//cout << "FFFOR: didn't find free frame, flushing " << n << endl;
 	Status s = this->FlushPage(this->frames[n].GetPageID());
 	if (s == OK) this->frames[n].Free();
 	else return -1;

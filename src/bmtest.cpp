@@ -148,7 +148,6 @@ int BMTester::Test2()
     // We choose this number to ensure that pinning this number of buffers
     // should fail.
     unsigned numPages = MINIBASE_BM->GetNumOfUnpinnedFrames() + 1;
-	cout << "NUMPages: " << numPages << endl;
     Page* pg;
     PageID pid, firstPid, lastPid;
 
