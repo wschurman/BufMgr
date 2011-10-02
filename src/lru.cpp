@@ -1,5 +1,20 @@
 #include "lru.h"
 
+LRU::LRU() {
+	this->first = NULL;
+	this->last = NULL;
+}
+
+LRU::~LRU() {
+	lFrame* cur_n = NULL;
+	lFrame* cur = this->first;
+	while (cur != NULL) {
+		cur_n = cur->next;
+		delete cur;
+		cur = cur_n;
+	}
+}
+
 bool LRU::IsPresent(int f) {
 	lFrame* cur = this->first;
 	while (cur != NULL) {
@@ -15,19 +30,12 @@ bool LRU::IsEmpty() {
 	return this->first == NULL;
 }
 
-LRU::LRU() {
-	this->first = NULL;
-	this->last = NULL;
-}
-
-LRU::~LRU() {
-
-}
-
 int LRU::PickVictim() {
 	lFrame* ret = this->first;
 	this->first = this->first->next;
-	return ret->f_no;
+	int ret_no = ret->f_no;
+	delete ret;
+	return ret_no;
 }
 
 void LRU::AddFrame(int f) {
@@ -50,12 +58,10 @@ void LRU::RemoveFrame(int f) {
 	while (cur != NULL) {
 		if (cur->f_no == f) {
 			if (first == last) {
-				//cout << "AHAHAHAHA" << endl;
 				this->first = NULL;
 				this->last = NULL;
-				//delete cur;
-			}
-			if (!prev) { // deleting from head
+				delete cur;
+			} else if (!prev) { // deleting from head
 				this->first = cur->next;
 				delete cur;
 			} else if (!cur->next) { // deleting tail

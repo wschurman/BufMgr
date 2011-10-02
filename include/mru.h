@@ -8,8 +8,14 @@
 // MRU Buffer Replacement
 class MRU : public Replacer {
 private:
-	
-	int f_no;
+	struct lFrame   // represents a node in a linked list stack
+	{
+		int f_no;
+		lFrame* next;
+	};  
+
+	lFrame* first; 
+	lFrame* last;
 
 public:
 	MRU();

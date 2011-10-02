@@ -20,9 +20,9 @@ BufMgr::BufMgr( int numOfFrames, const char* replacementPolicy)
 {
 	this->ResetStat();
 	this->numOfFrames = numOfFrames;
-	cout << "NUMOFFRAMES: " << numOfFrames << endl;
+	cout << "Number of Frames: " << numOfFrames << endl;
 	this->numUnpinnedFrames = numOfFrames;
-	cout << replacementPolicy << endl;
+	cout << "Replacement Policy: " << replacementPolicy << endl;
 	if (replacementPolicy[0] == 'L') {
 		this->replacer = new LRU();
 	} else {
@@ -45,7 +45,7 @@ BufMgr::BufMgr( int numOfFrames, const char* replacementPolicy)
 
 BufMgr::~BufMgr()
 {   
-	this->FlushAllPages(); // maybe
+	//this->FlushAllPages(); // maybe
 	delete [] this->frames;
 	this->frames = NULL;
 	delete this->replacer;
