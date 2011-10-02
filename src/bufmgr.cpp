@@ -78,7 +78,7 @@ Status BufMgr::PinPage(PageID pid, Page*& page, bool isEmpty)
 	if (frame_num == INVALID_PAGE) {
 		//cout << "PinPage didn't find frame with pid " << pid << endl;
 		if (this->GetNumOfUnpinnedFrames() == 0) {
-			cout << "AHAHAHAHAHAHAHHAHAHAHHAHAH FAAIAIIILLLLL" << endl;
+			//cout << "AHAHAHAHAHAHAHHAHAHAHHAHAH FAAIAIIILLLLL" << endl;
 			page = NULL;
 			return FAIL;
 		}

@@ -260,7 +260,6 @@ int BMTester::Test3()
             // Leave the page pinned if it equals 12 mod 20.  This is a
             // random number based loosely on a bug report.
             if ( pid % 20 != 12 )
-				cout << "UNPINNED pid " << pid << endl;
                 status = MINIBASE_BM->UnpinPage( pid , true );
             if ( status != OK )
                 cerr << "*** Could not unpin dirty page " << pid << endl;
