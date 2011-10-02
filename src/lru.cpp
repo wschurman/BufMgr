@@ -31,7 +31,6 @@ int LRU::PickVictim() {
 }
 
 void LRU::AddFrame(int f) {
-	if (f < 2) return;
 	lFrame* fr = new lFrame;
 	fr->f_no = f;
 	fr->next = NULL;
@@ -50,6 +49,12 @@ void LRU::RemoveFrame(int f) {
 	lFrame* cur = this->first;
 	while (cur != NULL) {
 		if (cur->f_no == f) {
+			if (first == last) {
+				//cout << "AHAHAHAHA" << endl;
+				this->first = NULL;
+				this->last = NULL;
+				//delete cur;
+			}
 			if (!prev) { // deleting from head
 				this->first = cur->next;
 				delete cur;
