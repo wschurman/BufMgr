@@ -13,6 +13,8 @@ MRU::~MRU() {
 		delete cur;
 		cur = cur_n;
 	}
+	this->first = NULL;
+	this->last = NULL;
 }
 
 int MRU::PickVictim() {

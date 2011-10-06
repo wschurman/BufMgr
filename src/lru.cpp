@@ -13,6 +13,8 @@ LRU::~LRU() {
 		delete cur;
 		cur = cur_n;
 	}
+	this->first = NULL;
+	this->last = NULL;
 }
 
 bool LRU::IsPresent(int f) {

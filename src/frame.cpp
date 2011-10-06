@@ -101,7 +101,9 @@ Status Frame::Write()
 //--------------------------------------------------------------------
 Status Frame::Read(PageID pid, bool isEmpty)
 {	
-	this->data = new Page();
+	if (!this->data) {
+		this->data = new Page();
+	}
 	this->pid = pid;
 	Status s = OK;
 	if (!isEmpty) {
@@ -126,7 +128,6 @@ Status Frame::Free()
 	this->pid = INVALID_PAGE;
 	this->pinCount = 0;
 	this->dirty = false;
-	//delete this->data;
 	return OK;
 }
 
@@ -189,6 +190,8 @@ int Frame::GetPinCount()
 
 Frame::~Frame()
 {
+	this->Free();
 	delete this->data;
+	this->data = NULL;
 }
 

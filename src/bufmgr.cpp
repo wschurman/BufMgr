@@ -45,11 +45,15 @@ BufMgr::BufMgr( int numOfFrames, const char* replacementPolicy)
 
 BufMgr::~BufMgr()
 {   
+	cout << "Called ********************************************" << endl;
 	//this->FlushAllPages(); // maybes
 	MINIBASE_DB->~DB(); // also, maybe
-	delete [] this->frames;
+	delete[] this->frames;
 	this->frames = NULL;
 	delete this->replacer;
+	this->replacer = NULL;
+
+	cout << "Decalled ******************************************" << endl;
 }
 
 //--------------------------------------------------------------------
@@ -225,7 +229,7 @@ Status BufMgr::FlushPage(PageID pid)
 
 	// write to disk if dirty
 	if (this->frames[frame_num].IsDirty()) {
-		MINIBASE_DB->WritePage(this->frames[frame_num].GetPageID(), this->frames[frame_num].GetPage());
+		this->frames[frame_num].Write();
 		this->numDirtyPageWrites++;
 	}
 	this->frames[frame_num].Free();
@@ -250,7 +254,7 @@ Status BufMgr::FlushAllPages()
 	for (int i = 0; i < this->numOfFrames; i++) {
 		if (!this->frames[i].NotPinned()) return FAIL;
 		if (this->frames[i].IsDirty()) {
-			MINIBASE_DB->WritePage(this->frames[i].GetPageID(), this->frames[i].GetPage());
+			this->frames[i].Write();
 			this->numDirtyPageWrites++;
 		}
 		this->frames[i].Free();
