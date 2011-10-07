@@ -20,12 +20,8 @@ BufMgr::BufMgr( int numOfFrames, const char* replacementPolicy)
 	cout << "** It seems that some of the code outside of\n** BufMgr class is trying to write to heap memory that \n** belongs to the BufMgr class." << endl;
 	cout << "** Our workaround is to comment out the \n** 'delete minibase_globals' (main.cpp:42) or run in Release mode.\n" << endl;
 
-
-	cout << "NumOfFrames: " << &this->numOfFrames << " to " << &this->numOfFrames + sizeof(this->numOfFrames) << endl;
-	cout << "NumOfUnpinned: " << &this->numUnpinnedFrames << " to " << &this->numUnpinnedFrames + sizeof(this->numUnpinnedFrames) << endl;
 	this->ResetStat();
 	this->numOfFrames = numOfFrames;
-	cout << "Number of Frames: " << numOfFrames << endl;
 	this->numUnpinnedFrames = numOfFrames;
 
 	cout << "Replacement Policy: " << replacementPolicy << endl;
@@ -34,11 +30,9 @@ BufMgr::BufMgr( int numOfFrames, const char* replacementPolicy)
 	} else {
 		this->replacer = new MRU();
 	}
-	cout << "Replacer: from " << &this->replacer << " to " << &this->replacer + sizeof(this->replacer) << endl;
 	
 	// allocate frames
 	this->frames = new Frame[numOfFrames];
-	cout << "Frames: from " << &this->frames[0] << endl;
 	for (int i=0; i < numOfFrames; i++) { // free all frames
 		this->frames[i].Free();
 	}

@@ -127,8 +127,6 @@ Status Frame::Free()
 	this->pid = INVALID_PAGE;
 	this->pinCount = 0;
 	this->dirty = false;
-	free(this->data);
-	this->data = NULL;
 	return OK;
 }
 
