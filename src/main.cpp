@@ -39,9 +39,10 @@ int main (int argc, char **argv)
 			return 1;
 		}
 
-		delete minibase_globals;
+		//delete minibase_globals;
 		cout << endl;
 	}
+	
 	getch();
 	return 0;
 }

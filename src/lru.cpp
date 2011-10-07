@@ -33,6 +33,7 @@ bool LRU::IsEmpty() {
 }
 
 int LRU::PickVictim() {
+	if (!this->first) return -1;
 	lFrame* ret = this->first;
 	this->first = this->first->next;
 	int ret_no = ret->f_no;

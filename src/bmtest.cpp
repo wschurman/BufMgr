@@ -49,12 +49,11 @@ int BMTester::Test1()
 	}
 
 	
-	PageID tempPid;
+	//PageID tempPid;
 
-	status = MINIBASE_BM->NewPage( tempPid, pg, numPages );
+	//status = MINIBASE_BM->NewPage( tempPid, pg, numPages );
 
 	
-
 	//
 	// Unpin that first page... to simplify our loop.
 	//
@@ -106,7 +105,7 @@ int BMTester::Test1()
             if ( data != pid + 99999 )
             {
                 status = FAIL;
-                cerr << "*** Read wrong data back from page " << pid << "DATA RETURNED: " << data << endl;
+                cerr << "*** Read wrong data back from page " << pid << endl;
             }
 
             status = MINIBASE_BM->UnpinPage( pid , true );
@@ -291,13 +290,13 @@ int BMTester::Test3()
         {
             status = MINIBASE_BM->UnpinPage( pid , true );
             if ( status != OK )
-                cerr << "*** A) Could not unpin page " << pid << endl;
+                cerr << "*** Could not unpin page " << pid << endl;
         }
         if ( status == OK && (pid % 20 == 12) )
         {
             status = MINIBASE_BM->UnpinPage( pid , true );
             if ( status != OK )
-                cerr << "*** B) Could not unpin page " << pid << endl;
+                cerr << "*** Could not unpin page " << pid << endl;
         }
     }
 
@@ -337,7 +336,7 @@ int BMTester::Test4()
 	cout << "\n  Test 4 tests relation between buffer size and pinpage request miss/hit:\n";
 
 	// The number of pages will be allocated for this test
-	const int numPages = 200; //change back to 200 
+	const int numPages = 200; 
 
 	// An array to save the pageID of the pages allocated
 	PageID pids[numPages];
@@ -588,8 +587,127 @@ int BMTester::Test5()
  */
 int BMTester::Test6()
 {
-	// TODO: add your code here
-	return true;
+	// This test allocates 2 pages, pinning and unpinning them, and then gets the pages
+	// again and then increments the value in it, causing misses if the pages were not
+	// in the buffer. LRU works best since neither of the two pages should be removed
+	// from the buffer before they are incremented since there are older pages to remove.
+	// MRU performs worse since when the buffer is full it removes a page after its created
+	// to make room for a new page before it is needed again for incrementing.
+
+	Page* pg;
+	PageID pid;
+	Status status;
+	int data;
+	clock_t initTime, endTime;
+
+	cout << "\n  Test 6 simulates an LRU-favorabe workload\n";
+
+	// The number of pages will be allocated for this test
+	const int numPages = 100; 
+
+	// An array to save the pageID of the pages allocated
+	PageID pids[numPages];
+
+	//
+	// Allocating Pages
+	//
+	
+	// Record the initial running time 
+	initTime = clock();
+
+	// Start to collect statistics
+	MINIBASE_BM->ResetStat();
+	
+	//
+	// Write something to each page
+	// and then increment the value in the page
+
+	
+	cout << "  - Allocate 2 Pages and increment their value by increaser variable \n";
+	cout << "       before moving on to the next 2 pages \n";
+
+	int increaser = 5;
+	int index;
+	for ( int i=0; i<numPages/2; i++ )
+	{
+		for ( int k=0; k<2; k++)
+		{
+			index= 2*i+k;
+			// Allocate page and pin it into buffer pool
+			status = MINIBASE_BM->NewPage( pid, pg );
+			if ( status != OK ){
+				cerr << "*** Could not allocate new page number " << index+1 << endl;
+				return FAIL;
+			}
+	
+			pids[index] = pid;
+			if ( status == OK )
+			{
+			
+				// Copy the page number + 99999 onto each page.  
+				data = pid + 99999;
+				memcpy( (void*)pg, &data, sizeof data );
+
+
+				status = MINIBASE_BM->UnpinPage( pid , true);
+				if ( status != OK )
+					cerr << "*** Could not unpin dirty page " << pid << endl;
+			}
+		}
+
+		//increment
+		for (int j=0; j<2; j++)
+		{
+			pid=pids[2*i+j];
+			status = MINIBASE_BM->PinPage( pid, pg );
+			if ( status != OK )
+			{
+				cerr << "*** Could not pin page " << pid << endl;
+			}
+			else if ( status == OK )
+			{
+				memcpy( &data, (void*)pg, sizeof data );
+				data=data + increaser;
+				memcpy( (void*)pg, &data, sizeof data );
+				status = MINIBASE_BM->UnpinPage( pid , true );
+				if ( status != OK )
+					cerr << "*** Could not unpin page " << pid << endl;
+			}
+		}
+	}
+
+	cout << "  - Collect the Statistics\n";
+	
+
+	MINIBASE_BM->FlushAllPages();
+    				     
+	// record the end time
+	endTime = clock();
+
+    for (int index=0; index < numPages; index++ )
+    {
+		pid = pids[index];
+
+        Status freeStatus = MINIBASE_BM->FreePage( pid );
+        if ( status == OK && freeStatus != OK )
+        {
+            status = freeStatus;
+            cerr << "*** Error freeing page " << pid << endl;
+        }
+    }
+
+
+	cout << "  - The running time for above operation is " << (endTime - initTime)*(1000.0/CLOCKS_PER_SEC) <<"ms\n";
+	
+	cout << "  - Starting to print Statistics \n";
+	// Start to print statistics
+	MINIBASE_BM->PrintStat();
+	
+    cout << "  Test 6 completed successfully.\n";
+
+	cout << "  Press any key to continue." << endl;
+	getch();
+    return true;
 }
 
 /**
@@ -598,8 +716,122 @@ int BMTester::Test6()
  */
 int BMTester::Test7()
 {
-	// TODO: add your code here
-	return true;
+	// This test allocates a large number of pages and stores some value in them.
+	// It then increments each page in numerical order. MRU performs better since 
+	// some of the first allocated pages remain in memory when they are needed for
+	// allocating. None of them are available under an LRU policy since when they 
+	// are sufficiently old they are delted, and no page is available by the time
+	// it is needed for incrementing. 
+
+	Page* pg;
+	PageID pid;
+	Status status;
+	int data;
+	clock_t initTime, endTime;
+
+	cout << "\n  Test 7 simulates an MRU-favorabe workload\n";
+
+	// The number of pages will be allocated for this test
+	const int numPages = 400; 
+
+	// An array to save the pageID of the pages allocated
+	PageID pids[numPages];
+
+	//
+	// Allocating Pages
+	//
+	
+	// Record the initial running time 
+	initTime = clock();
+
+	// Start to collect statistics
+	MINIBASE_BM->ResetStat();
+	
+	//
+	// Write something to each page
+	//
+	for ( int index=0; index<numPages; index++ )
+	{
+		// Allocate page and pin it into buffer pool
+		status = MINIBASE_BM->NewPage( pid, pg );
+        if ( status != OK ){
+            cerr << "*** Could not allocate new page number " << index+1 << endl;
+			return FAIL;
+		}
+	
+		pids[index] = pid;
+		if ( status == OK )
+		{
+			//copy some value into the page
+			data = pid + 99999;
+			memcpy( (void*)pg, &data, sizeof data );
+
+
+			status = MINIBASE_BM->UnpinPage( pid , true);
+			if ( status != OK )
+				cerr << "*** Could not unpin dirty page " << pid << endl;
+		}
+	}
+
+
+	cout << "  - Go through Each allocated page in numerical order n times \n";
+	cout << "       and increment it's value by increaser variable \n";
+	 
+	int increaser = 5;
+	int n = 20;
+
+	cout << "  - Collect the Statistics\n";
+	
+	for ( int i= 0; i<n; i++){
+		for ( pid=pids[0]; status == OK && pid < pids[numPages-1]; ++pid )
+		{  
+			status = MINIBASE_BM->PinPage( pid, pg );
+			if ( status != OK )
+			{
+				cerr << "*** Could not pin page " << pid << endl;
+			}
+			else if ( status == OK )
+			{
+				memcpy( &data, (void*)pg, sizeof data );
+				data=data + increaser;
+				memcpy( (void*)pg, &data, sizeof data );
+
+				status = MINIBASE_BM->UnpinPage( pid , true );
+				if ( status != OK )
+					cerr << "*** Could not unpin page " << pid << endl;
+			}
+		}
+	}
+
+	MINIBASE_BM->FlushAllPages();
+    				     
+	// record the end time
+	endTime = clock();
+
+    for (int index=0; index < numPages; index++ )
+    {
+		pid = pids[index];
+
+        Status freeStatus = MINIBASE_BM->FreePage( pid );
+        if ( status == OK && freeStatus != OK )
+        {
+            status = freeStatus;
+            cerr << "*** Error freeing page " << pid << endl;
+        }
+    }
+
+
+	cout << "  - The running time for above operation is " << (endTime - initTime)*(1000.0/CLOCKS_PER_SEC) <<"ms\n";
+	
+	cout << "  - Starting to print Statistics \n";
+	// Start to print statistics
+	MINIBASE_BM->PrintStat();
+	
+    cout << "  Test 7 completed successfully.\n";
+
+	cout << "  Press any key to continue." << endl;
+	getch();
+    return true;
 }
 
 

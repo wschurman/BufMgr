@@ -81,8 +81,7 @@ bool Frame::IsValid()
 //--------------------------------------------------------------------
 Status Frame::Write()
 {
-	Status success = MINIBASE_DB->WritePage(this->GetPageID(), this->GetPage());
-	//probably wrong status
+	Status success = MINIBASE_DB->WritePage(this->GetPageID(), this->GetPage()); // write to DB
 	if (success == OK) {
 		return OK;
 	} else {
@@ -102,12 +101,12 @@ Status Frame::Write()
 Status Frame::Read(PageID pid, bool isEmpty)
 {	
 	if (!this->data) {
-		this->data = new Page();
+		this->data = new Page(); // only create new page if data is empty
 	}
 	this->pid = pid;
 	Status s = OK;
 	if (!isEmpty) {
-		 s = MINIBASE_DB->ReadPage(pid, this->data);
+		 s = MINIBASE_DB->ReadPage(pid, this->data); // read from DB
 	}
 	return s;
 }
@@ -128,6 +127,8 @@ Status Frame::Free()
 	this->pid = INVALID_PAGE;
 	this->pinCount = 0;
 	this->dirty = false;
+	free(this->data);
+	this->data = NULL;
 	return OK;
 }
 
